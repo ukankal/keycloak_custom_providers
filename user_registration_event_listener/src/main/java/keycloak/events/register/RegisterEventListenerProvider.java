@@ -41,6 +41,8 @@ public class RegisterEventListenerProvider implements EventListenerProvider {
                 sendEvent(event);
             } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                this.httpClient.getConnectionManager().shutdown();
             }
         }
     }
@@ -53,6 +55,8 @@ public class RegisterEventListenerProvider implements EventListenerProvider {
                 sendAdminEvent(adminEvent);
             }catch (IOException e){
                 e.printStackTrace();
+            }finally {
+                this.httpClient.getConnectionManager().shutdown();
             }
         }
     }
