@@ -1,6 +1,7 @@
 package keycloak.events.register;
 
-import org.apache.http.client.HttpClient;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.keycloak.Config;
 import org.keycloak.connections.httpclient.HttpClientProvider;
 import org.keycloak.events.EventListenerProviderFactory;
@@ -8,6 +9,11 @@ import org.keycloak.events.EventType;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
+
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -21,7 +27,7 @@ public class RegisterEventListenerProviderFactory implements EventListenerProvid
 
     @Override
     public RegisterEventListenerProvider create(KeycloakSession session) {
-        HttpClient httpClient = session.getProvider(HttpClientProvider.class).getHttpClient();
+        CloseableHttpClient httpClient = HttpClients.createDefault();
         return new RegisterEventListenerProvider(excludedEvents, eventsUrl, excludedAdminOperations, operationsUrl, httpClient);
     }
 

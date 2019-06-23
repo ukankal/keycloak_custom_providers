@@ -2,8 +2,6 @@ package keycloak.events.register;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.keycloak.events.Event;
@@ -11,6 +9,11 @@ import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.OperationType;
+
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 
 import java.io.IOException;
 import java.util.Set;
@@ -21,9 +24,9 @@ public class RegisterEventListenerProvider implements EventListenerProvider {
     private String eventsUrl;
     private Set<OperationType> excludedAdminOperations;
     private String operationsUrl;
-    private HttpClient httpClient;
+    private CloseableHttpClient httpClient;
 
-    public RegisterEventListenerProvider(Set<EventType> excludedEvents, String eventsUrl, Set<OperationType> excludedAdminOperations, String operationsUrl, HttpClient httpClient) {
+    public RegisterEventListenerProvider(Set<EventType> excludedEvents, String eventsUrl, Set<OperationType> excludedAdminOperations, String operationsUrl, CloseableHttpClient httpClient) {
         this.excludedEvents = excludedEvents;
         this.eventsUrl = eventsUrl;
         this.excludedAdminOperations = excludedAdminOperations;
@@ -42,7 +45,7 @@ public class RegisterEventListenerProvider implements EventListenerProvider {
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-                this.httpClient.getConnectionManager().shutdown();
+                // this.httpClient.getConnectionManager().shutdown();
             }
         }
     }
@@ -56,16 +59,21 @@ public class RegisterEventListenerProvider implements EventListenerProvider {
             }catch (IOException e){
                 e.printStackTrace();
             }finally {
-                this.httpClient.getConnectionManager().shutdown();
+                // this.httpClient.getConnectionManager().shutdown();
             }
         }
     }
 
     private void sendEvent(Event event) throws IOException {
+        // HttpPost httpPost = new HttpPost(this.eventsUrl);
+
+        // HttpResponse response = this.httpClient.execute(httpPost);
+
         HttpPost httpPost = new HttpPost(this.eventsUrl);
         httpPost.setEntity(new StringEntity(this.getEventJson(event)));
         httpPost.setHeader("Content-Type", "application/json");
-        HttpResponse response = this.httpClient.execute(httpPost);
+        CloseableHttpResponse response2 = this.httpClient.execute(httpPost);
+        response2.close();
     }
 
     private String getEventJson(Event event) throws JsonProcessingException {
@@ -74,10 +82,17 @@ public class RegisterEventListenerProvider implements EventListenerProvider {
     }
 
     private void sendAdminEvent(AdminEvent adminEvent) throws IOException {
+        // HttpPost httpPost = new HttpPost(this.operationsUrl);
+        // httpPost.setEntity(new StringEntity(this.getAdminEventJson(adminEvent)));
+        // httpPost.setHeader("Content-Type", "application/json");
+        // HttpResponse response = this.httpClient.execute(httpPost);
+
         HttpPost httpPost = new HttpPost(this.operationsUrl);
         httpPost.setEntity(new StringEntity(this.getAdminEventJson(adminEvent)));
         httpPost.setHeader("Content-Type", "application/json");
-        HttpResponse response = this.httpClient.execute(httpPost);
+        CloseableHttpResponse response2 = this.httpClient.execute(httpPost);
+        response2.close();
+
     }
 
     private String getAdminEventJson(AdminEvent adminEvent) throws JsonProcessingException {
