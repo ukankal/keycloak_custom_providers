@@ -14,6 +14,7 @@ import java.sql.Connection;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
@@ -32,7 +33,7 @@ public class RoleDaoImpl implements RoleDao {
     PreparedStatement stmt = null;
     try {
       conn = ds.getConnection();
-      conn.setAutoCommit(false);
+
       stmt = conn.prepareStatement(
           "UPDATE roles SET name=?,description=?, client_role=?, default_role=?, client_id=? WHERE id=?");
       stmt.setString(1, role.getName());
@@ -40,7 +41,7 @@ public class RoleDaoImpl implements RoleDao {
       stmt.setBoolean(3, role.getClientRole());
       stmt.setBoolean(4, role.getDefaultRole());
       stmt.setString(5, role.getClientId());
-      stmt.setString(7, role.getId());
+      stmt.setObject(7, UUID.fromString(role.getId()));
 
       int rs = stmt.executeUpdate();
       if (rs == 1) {
@@ -78,7 +79,7 @@ public class RoleDaoImpl implements RoleDao {
       conn = ds.getConnection();
       stmt = conn.prepareStatement(
           "select * from user_entity where id in (select user_id from user_role_mapping where role_id = ? UNION select user_id from user_group_membership where group_id in (select group_id from group_role_mapping where role_id = ?)) limit ? offset ?");
-      stmt.setString(1, roleId);
+      stmt.setObject(1, UUID.fromString(roleId));
       stmt.setInt(1, limit);
       stmt.setInt(1, offset);
       rs = stmt.executeQuery();
@@ -117,7 +118,7 @@ public class RoleDaoImpl implements RoleDao {
     try {
       conn = ds.getConnection();
       stmt = conn.prepareStatement("select * from roles where client_id=?");
-      stmt.setString(1, clientId);
+      stmt.setObject(1, UUID.fromString(clientId));
       rs = stmt.executeQuery();
       while (rs.next()) {
         roles.add(extractRoleFromResultSet(rs));
@@ -155,7 +156,8 @@ public class RoleDaoImpl implements RoleDao {
       conn = ds.getConnection();
       stmt = conn.prepareStatement(
           "select * from roles where id in (select role_id from user_role_mapping where user_id = ? UNION select role_id from group_role_mapping where group_id in (select group_id from user_group_membership where user_id = ?))");
-      stmt.setString(1, userId);
+      stmt.setObject(1, UUID.fromString(userId));
+      stmt.setObject(2, UUID.fromString(userId));
       rs = stmt.executeQuery();
       while (rs.next()) {
         roles.add(extractRoleFromResultSet(rs));
@@ -190,8 +192,8 @@ public class RoleDaoImpl implements RoleDao {
     try {
       conn = ds.getConnection();
       stmt = conn.prepareStatement("INSERT INTO user_role_mapping (role_id,user_id) VALUES (?, ?)");
-      stmt.setString(1, roleId);
-      stmt.setString(2, userId);
+      stmt.setObject(1, UUID.fromString(roleId));
+      stmt.setObject(2, UUID.fromString(userId));
 
       int rs = stmt.executeUpdate();
       if (rs == 1) {
@@ -227,8 +229,8 @@ public class RoleDaoImpl implements RoleDao {
       conn = ds.getConnection();
       stmt =
           conn.prepareStatement("DELETE FROM user_role_mapping WHERE role_id = ? AND user_id = ?");
-      stmt.setString(1, roleId);
-      stmt.setString(2, userId);
+      stmt.setObject(1, UUID.fromString(roleId));
+      stmt.setObject(2, UUID.fromString(userId));
 
       int rs = stmt.executeUpdate();
       if (rs == 1) {
@@ -265,8 +267,8 @@ public class RoleDaoImpl implements RoleDao {
       conn = ds.getConnection();
       stmt = conn
           .prepareStatement("select * from user_role_mapping WHERE role_id = ? AND user_id = ?");
-      stmt.setString(1, roleId);
-      stmt.setString(2, userId);
+      stmt.setObject(1, UUID.fromString(roleId));
+      stmt.setObject(2, UUID.fromString(userId));
       rs = stmt.executeQuery();
       if (rs.next()) {
         return true;
@@ -296,7 +298,7 @@ public class RoleDaoImpl implements RoleDao {
 
   private UserEntity extractUserFromResultSet(ResultSet rs) throws SQLException {
     UserEntity user = new UserEntity();
-    user.setId(rs.getString("id"));
+    user.setId(rs.getObject("id", java.util.UUID.class).toString());
     user.setEmail(rs.getString("email"));
     user.setEmailVerified(rs.getBoolean("email_verified"));
     user.setEnabled(rs.getBoolean("enabled"));
@@ -309,7 +311,7 @@ public class RoleDaoImpl implements RoleDao {
 
   private Role extractRoleFromResultSet(ResultSet rs) throws SQLException {
     Role role = new Role();
-    role.setId(rs.getString("id"));
+    role.setId(rs.getObject("id", java.util.UUID.class).toString());
     role.setClientRole(rs.getBoolean("client_role"));
     role.setName(rs.getString("name"));
     role.setDescription(rs.getString("description"));

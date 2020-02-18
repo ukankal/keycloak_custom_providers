@@ -4,6 +4,7 @@ import org.keycloak.models.UserModel;
 import org.ironiq.postgres.models.UserEntity;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
 
 public interface UserDao {
 
@@ -34,4 +35,12 @@ public interface UserDao {
   void removeRequiredAction(String userId, String action);
 
   void removeRequiredAction(String userId, UserModel.RequiredAction action);
+
+  List<UserEntity> searchForUser(String searchTerm);
+
+  List<UserEntity> searchForUser(String searchTerm, int start, int max);
+
+  List<UserEntity> searchForUser(Map<String, String> params);
+
+  List<UserEntity> searchForUser(Map<String, String> params, int start, int max);
 }

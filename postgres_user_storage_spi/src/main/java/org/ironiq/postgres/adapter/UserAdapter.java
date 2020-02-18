@@ -15,6 +15,7 @@ import org.keycloak.storage.adapter.AbstractUserAdapterFederatedStorage;
 
 import java.util.Set;
 import java.util.HashSet;
+import java.util.logging.*;
 
 public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
@@ -27,11 +28,15 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
   protected ComponentModel model;
   protected RealmModel realm;
 
+  private final Logger logger = Logger.getLogger(this.getClass().getPackage().getName());
+
 
   public UserAdapter(KeycloakSession session, RealmModel realm, ComponentModel model,
       UserEntity user, UserDaoImpl userDaoImpl, RoleDaoImpl roleDaoImpl,
       GroupDaoImpl groupDaoImpl) {
     super(session, realm, model);
+    logger.info("externalId:" + user.getId());
+    logger.info("storageId" + StorageId.keycloakId(model, user.getId()));
     this.user = user;
     this.session = session;
     this.realm = realm;
