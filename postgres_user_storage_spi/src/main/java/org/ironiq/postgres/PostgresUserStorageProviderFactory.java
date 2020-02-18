@@ -35,9 +35,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+import java.util.logging.*;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
-@JBossLog
 public class PostgresUserStorageProviderFactory
         implements UserStorageProviderFactory<PostgresUserStorageProvider> {
 
@@ -46,10 +47,11 @@ public class PostgresUserStorageProviderFactory
     // public static final String DATABASE_NAME = "keycloak_user_storage";
     // public static final String USERNAME = "postgres";
     // public static final String PASSWORD = "postgres";
-    Map properties;
 
     protected static final List<ProviderConfigProperty> configMetadata;
+    private final Logger logger = Logger.getLogger(this.getClass().getPackage().getName());
 
+    private static HikariDataSource ds;
     public static final String DB_URL = "db:url";
     public static final String DATABASE_NAME = "db:database";
     public static final String USERNAME = "db:username";
@@ -83,21 +85,37 @@ public class PostgresUserStorageProviderFactory
     }
 
     @Override
+    public void onCreate(KeycloakSession session, RealmModel realm, ComponentModel model) {
+        logger.info("<<<<<<<<<<<<<<< onCreate of factory" + DB_URL + DATABASE_NAME + USERNAME
+                + PASSWORD);
+        MultivaluedHashMap<String, String> configMap = model.getConfig();
+        try {
+            ds = createDataSourceFromConfig(configMap.getFirst(DB_URL),
+                    configMap.getFirst(DATABASE_NAME), configMap.getFirst(USERNAME),
+                    configMap.getFirst(PASSWORD));
+        } catch (Exception e) {
+            throw e;
+        } finally {
+            return;
+        }
+    }
+
+    @Override
     public void validateConfiguration(KeycloakSession session, RealmModel realm,
             ComponentModel config) throws ComponentValidationException {
-        // MultivaluedHashMap<String, String> configMap = config.getConfig();
-        // if (StringUtils.isBlank(configMap.getFirst(DB_URL))) {
-        // throw new ComponentValidationException("Jdbc Url is empty.");
-        // }
-        // if (StringUtils.isBlank(configMap.getFirst(DATABASE_NAME))) {
-        // throw new ComponentValidationException("Database name empty.");
-        // }
-        // if (StringUtils.isBlank(configMap.getFirst(USERNAME))) {
-        // throw new ComponentValidationException("Database username empty.");
-        // }
-        // if (StringUtils.isBlank(configMap.getFirst(PASSWORD))) {
-        // throw new ComponentValidationException("Database password empty.");
-        // }
+        MultivaluedHashMap<String, String> configMap = config.getConfig();
+        if (StringUtils.isBlank(configMap.getFirst(DB_URL))) {
+            throw new ComponentValidationException("Jdbc Url is empty.");
+        }
+        if (StringUtils.isBlank(configMap.getFirst(DATABASE_NAME))) {
+            throw new ComponentValidationException("Database name empty.");
+        }
+        if (StringUtils.isBlank(configMap.getFirst(USERNAME))) {
+            throw new ComponentValidationException("Database username empty.");
+        }
+        if (StringUtils.isBlank(configMap.getFirst(PASSWORD))) {
+            throw new ComponentValidationException("Database password empty.");
+        }
     }
 
     @Override
@@ -107,12 +125,15 @@ public class PostgresUserStorageProviderFactory
 
     @Override
     public PostgresUserStorageProvider create(KeycloakSession session, ComponentModel model) {
+
         MultivaluedHashMap<String, String> config = model.getConfig();
+        logger.info("create Instance: {0}, {1}, {2},{3}" + config.getFirst(DB_URL)
+                + config.getFirst(DATABASE_NAME) + config.getFirst(USERNAME)
+                + config.getFirst(PASSWORD));
         try {
-            return new PostgresUserStorageProvider(session, model, config.getFirst(DB_URL),
-                    config.getFirst(DATABASE_NAME), config.getFirst(USERNAME),
-                    config.getFirst(PASSWORD));
+            return new PostgresUserStorageProvider(session, model, ds);
         } catch (Exception e) {
+            e.printStackTrace();
             // TODO: handle exception
             return null;
         }
@@ -120,28 +141,53 @@ public class PostgresUserStorageProviderFactory
 
     @Override
     public void postInit(KeycloakSessionFactory factory) {
-        log.info("<<<<<< In postinit");
+        logger.info("<<<<<<<<<<<<<<<<<< In postinit");
     }
 
     @Override
     public void close() {
-        log.info("<<<<<< Closing factory");
+        logger.info("<<<<<<<<<<<<<<<<<< Closing factory");
+        ds.close();
     }
 
     @Override
     public void init(Config.Scope config) {
-        log.info("<<<<<< Init factory");
+        logger.info("<<<<<<<<<<<<<<<<<< Init factory");
     }
 
     @Override
     public PostgresUserStorageProvider create(KeycloakSession session) {
-        log.info("<<<<<< create provider instance");
+        logger.info("<<<<<<<<<<<<<<<<<< create provider instance");
         return null;
     }
 
     @Override
     public String getHelpText() {
-        log.info("<<<<<< Help text");
+        logger.info("<<<<<<<<<<<<<<<<<< Help text");
         return null;
+    }
+
+    private HikariDataSource createDataSourceFromConfig(String db_jdbcUrl, String database_name,
+            String db_username, String db_password) throws Exception {
+        // logger.info(
+        // "createDataSourceFromConfig : db_jdbcUrl={0}, database_name={1},
+        // db_username={2},db_password={3}",
+        // db_jdbcUrl, database_name, db_username, db_password);
+        logger.info("<<<<<<<<<<<< createDataSourceFromConfig" + db_jdbcUrl + database_name
+                + db_username + db_password);
+        try {
+            HikariConfig jdbcConfig = new HikariConfig();
+            jdbcConfig.setPoolName("kctest");
+            jdbcConfig.setJdbcUrl(db_jdbcUrl.concat(database_name));
+            jdbcConfig.setUsername(db_username);
+            jdbcConfig.setPassword(db_password);
+            jdbcConfig.setLeakDetectionThreshold(500);
+            jdbcConfig.setMaximumPoolSize(10);
+            jdbcConfig.setMinimumIdle(10);
+            jdbcConfig.setIdleTimeout(20000);
+            return new HikariDataSource(jdbcConfig);
+        } catch (Exception e) {
+            throw e;
+        }
     }
 }
