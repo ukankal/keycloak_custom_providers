@@ -14,6 +14,7 @@ import java.sql.Connection;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
@@ -32,13 +33,13 @@ public class GroupDaoImpl implements GroupDao {
     PreparedStatement stmt = null;
     try {
       conn = ds.getConnection();
-      conn.setAutoCommit(false);
+
       stmt = conn
           .prepareStatement("UPDATE groups SET name=?,parent_group=?, default_group=? WHERE id=?");
       stmt.setString(1, group.getName());
       stmt.setString(2, group.getParentGroup());
       stmt.setBoolean(3, group.getDefaultGroup());
-      stmt.setString(7, group.getId());
+      stmt.setObject(4, UUID.fromString(group.getId()));
 
       int rs = stmt.executeUpdate();
       if (rs == 1) {
@@ -83,8 +84,8 @@ public class GroupDaoImpl implements GroupDao {
     try {
       conn = ds.getConnection();
       stmt = conn.prepareStatement(
-          "select * from groups where group_id in (select group_id from user_group_membership where user_id = ?)");
-      stmt.setString(1, userId);
+          "select * from groups where id in (select group_id from user_group_membership where user_id = ?)");
+      stmt.setObject(1, UUID.fromString(userId));
       rs = stmt.executeQuery();
       while (rs.next()) {
         groups.add(extractGroupFromResultSet(rs));
@@ -121,8 +122,8 @@ public class GroupDaoImpl implements GroupDao {
       conn = ds.getConnection();
       stmt = conn.prepareStatement(
           "select * from user_group_membership where user_id = ? AND group_id = ?");
-      stmt.setString(1, userId);
-      stmt.setString(1, groupId);
+      stmt.setObject(1, UUID.fromString(userId));
+      stmt.setObject(2, UUID.fromString(groupId));
       rs = stmt.executeQuery();
       if (rs.next()) {
         return true;
@@ -157,8 +158,8 @@ public class GroupDaoImpl implements GroupDao {
       conn = ds.getConnection();
       stmt = conn
           .prepareStatement("INSERT INTO user_group_membership (group_id,user_id) VALUES (?, ?)");
-      stmt.setString(1, groupId);
-      stmt.setString(2, userId);
+      stmt.setObject(2, UUID.fromString(userId));
+      stmt.setObject(1, UUID.fromString(groupId));
       int rs = stmt.executeUpdate();
       if (rs == 1) {
         return true;
@@ -193,8 +194,8 @@ public class GroupDaoImpl implements GroupDao {
       conn = ds.getConnection();
       stmt = conn
           .prepareStatement("DELETE FROM user_group_membership WHERE group_id = ? AND user_id = ?");
-      stmt.setString(1, groupId);
-      stmt.setString(2, userId);
+      stmt.setObject(2, UUID.fromString(userId));
+      stmt.setObject(1, UUID.fromString(groupId));
 
       int rs = stmt.executeUpdate();
       if (rs == 1) {
@@ -232,9 +233,9 @@ public class GroupDaoImpl implements GroupDao {
       conn = ds.getConnection();
       stmt = conn.prepareStatement(
           "select * from user_entity where id IN (select user_id from user_group_membership where group_id = ?) limit ? offset ?");
-      stmt.setString(1, groupId);
-      stmt.setInt(1, limit);
-      stmt.setInt(1, offset);
+      stmt.setObject(1, UUID.fromString(groupId));
+      stmt.setInt(2, limit);
+      stmt.setInt(3, offset);
       rs = stmt.executeQuery();
       while (rs.next()) {
         users.add(extractUserFromResultSet(rs));
@@ -265,7 +266,7 @@ public class GroupDaoImpl implements GroupDao {
 
   private Group extractGroupFromResultSet(ResultSet rs) throws SQLException {
     Group group = new Group();
-    group.setId(rs.getString("id"));
+    group.setId(rs.getObject("id", java.util.UUID.class).toString());
     group.setName(rs.getString("name"));
     group.setParentGroup(rs.getString("parent_group"));
     group.setDefaultGroup(rs.getBoolean("default_group"));
@@ -274,7 +275,7 @@ public class GroupDaoImpl implements GroupDao {
 
   private UserEntity extractUserFromResultSet(ResultSet rs) throws SQLException {
     UserEntity user = new UserEntity();
-    user.setId(rs.getString("id"));
+    user.setId(rs.getObject("id", java.util.UUID.class).toString());
     user.setEmail(rs.getString("email"));
     user.setEmailVerified(rs.getBoolean("email_verified"));
     user.setEnabled(rs.getBoolean("enabled"));
