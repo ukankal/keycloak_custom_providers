@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.logging.*;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -61,94 +62,85 @@ public class PostgresUserStorageProvider
     private GroupDaoImpl groupDaoImpl;
     private CredentialDaoImpl credentialDaoImpl;
 
+    private final Logger logger = Logger.getLogger(this.getClass().getPackage().getName());
+
     public PostgresUserStorageProvider(KeycloakSession session, ComponentModel model,
-            String db_jdbcUrl, String database_name, String db_username, String db_password)
-            throws Exception {
+            HikariDataSource ds) throws Exception {
         this.session = session;
         this.model = model;
         supportedCredentialTypes.add(PasswordCredentialModel.TYPE);
-        this.ds = createDataSourceFromConfig(db_jdbcUrl, database_name, db_username, db_password);
+        this.ds = ds;
         this.userDaoImpl = new UserDaoImpl(this.ds);
         this.groupDaoImpl = new GroupDaoImpl(this.ds);
         this.roleDaoImpl = new RoleDaoImpl(this.ds);
         this.credentialDaoImpl = new CredentialDaoImpl(this.ds);
+        logger.info("PostgresUserStorageProvider constructor");
     }
-
-    private HikariDataSource createDataSourceFromConfig(String db_jdbcUrl, String database_name,
-            String db_username, String db_password) throws Exception {
-        log.debugv(
-                "createDataSourceFromConfig : db_jdbcUrl={0}, database_name={1}, db_username={2},db_password={3}",
-                db_jdbcUrl, database_name, db_username, db_password);
-        try {
-            HikariConfig jdbcConfig = new HikariConfig();
-            jdbcConfig.setPoolName("kctest");
-            jdbcConfig.setJdbcUrl(db_jdbcUrl.concat(database_name));
-            jdbcConfig.setUsername(db_username);
-            jdbcConfig.setPassword(db_password);
-            jdbcConfig.setLeakDetectionThreshold(500);
-            jdbcConfig.setMaximumPoolSize(10);
-            jdbcConfig.setMinimumIdle(10);
-            jdbcConfig.setIdleTimeout(20000);
-            return new HikariDataSource(jdbcConfig);
-        } catch (Exception e) {
-            throw e;
-        }
-    }
-
-
 
     // UserStorageProvider methods
 
     @Override
     public void preRemove(RealmModel realm) {
-        log.debugv("pre-remove realm");
+        logger.info("pre-remove realm");
     }
 
     @Override
     public void preRemove(RealmModel realm, GroupModel group) {
-        log.debugv("pre-remove group");
+        logger.info("pre-remove group");
     }
 
     @Override
     public void preRemove(RealmModel realm, RoleModel role) {
-        log.debugv("pre-remove role");
+        logger.info("pre-remove role");
     }
 
     // UserLookupProvider methods
 
     @Override
     public UserModel getUserByUsername(String username, RealmModel realm) {
-        log.debugv("getUserByUsername: username: {0}", username);
-        return new UserAdapter(session, realm, model, userDaoImpl.getUserByUsername(username),
-                userDaoImpl, roleDaoImpl, groupDaoImpl);
+        logger.info("getUserByUsername: username: {0}" + username);
+        UserEntity user = userDaoImpl.getUserByUsername(username);
+        if (user != null) {
+            return new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
+                    groupDaoImpl);
+        }
+        return null;
     }
 
     @Override
     public UserModel getUserById(String id, RealmModel realm) {
-        log.debugv("getUserById: username: {0}", id);
+        logger.info("getUserById: username: {0}" + id);
         String externalId = StorageId.externalId(id);
-        return new UserAdapter(session, realm, model, userDaoImpl.getUserById(externalId),
-                userDaoImpl, roleDaoImpl, groupDaoImpl);
+        UserEntity user = userDaoImpl.getUserById(externalId);
+        if (user != null) {
+            return new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
+                    groupDaoImpl);
+        }
+        return null;
     }
 
     @Override
     public UserModel getUserByEmail(String email, RealmModel realm) {
-        log.debugv("getUserByEmail: username: {0}", email);
-        return new UserAdapter(session, realm, model, userDaoImpl.getUserByEmail(email),
-                userDaoImpl, roleDaoImpl, groupDaoImpl);
+        logger.info("getUserByEmail: username: {0}" + email);
+        UserEntity user = userDaoImpl.getUserByEmail(email);
+        if (user != null) {
+            return new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
+                    groupDaoImpl);
+        }
+        return null;
     }
 
     // UserQueryProvider methods
 
     @Override
     public int getUsersCount(RealmModel realm) {
-        log.debug("getUsersCount");
+        logger.info("getUsersCount");
         return userDaoImpl.getUsersCount();
     }
 
     @Override
     public List<UserModel> getUsers(RealmModel realm) {
-        log.debug("getUsers");
+        logger.info("getUsers");
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = userDaoImpl.getAllUsers();
         users.forEach((user) -> {
@@ -160,7 +152,7 @@ public class PostgresUserStorageProvider
 
     @Override
     public List<UserModel> getUsers(RealmModel realm, int firstResult, int maxResults) {
-        log.debugv("getUsers: firstResult {0}, maxResults {1}", firstResult, maxResults);
+        logger.info("getUsers: firstResult {0}, maxResults {1}" + firstResult + maxResults);
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = userDaoImpl.getAllUsers(firstResult, maxResults);
         users.forEach((user) -> {
@@ -173,49 +165,65 @@ public class PostgresUserStorageProvider
     // UserQueryProvider method implementations
 
     @Override
-    public List<UserModel> searchForUser(String search, RealmModel realm) {
-        return searchForUser(search, realm, 0, Integer.MAX_VALUE);
+    public List<UserModel> searchForUser(String searchTerm, RealmModel realm) {
+        logger.info("searchForUser : " + searchTerm);
+        List<UserModel> userModels = new ArrayList<UserModel>();
+        List<UserEntity> users = userDaoImpl.searchForUser(searchTerm);
+        users.forEach((user) -> {
+            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
+                    groupDaoImpl));
+        });
+        return userModels;
     }
 
     @Override
-    public List<UserModel> searchForUser(String search, RealmModel realm, int firstResult,
+    public List<UserModel> searchForUser(String searchTerm, RealmModel realm, int firstResult,
             int maxResults) {
-        List<UserModel> users = new LinkedList<>();
-        int i = 0;
-        for (Object obj : properties.keySet()) {
-            String username = (String) obj;
-            if (!username.contains(search))
-                continue;
-            if (i++ < firstResult)
-                continue;
-            UserModel user = getUserByUsername(username, realm);
-            users.add(user);
-            if (users.size() >= maxResults)
-                break;
-        }
-        return users;
+        logger.info("searchForUser Term: " + searchTerm + "offset :" + firstResult + "limit : "
+                + maxResults);
+        List<UserModel> userModels = new ArrayList<UserModel>();
+        List<UserEntity> users = userDaoImpl.searchForUser(searchTerm, firstResult, maxResults);
+        users.forEach((user) -> {
+            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
+                    groupDaoImpl));
+        });
+        return userModels;
     }
 
     @Override
     public List<UserModel> searchForUser(Map<String, String> params, RealmModel realm) {
-        return searchForUser(params, realm, 0, Integer.MAX_VALUE);
+        params.forEach((key, value) -> logger.info("key :" + key + " " + "value : " + value));
+        logger.info("searchForUser: without pagination");
+        List<UserModel> userModels = new ArrayList<UserModel>();
+        List<UserEntity> users = userDaoImpl.searchForUser(params);
+        users.forEach((user) -> {
+            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
+                    groupDaoImpl));
+        });
+        return userModels;
     }
 
     @Override
     public List<UserModel> searchForUser(Map<String, String> params, RealmModel realm,
             int firstResult, int maxResults) {
-        // only support searching by username
-        String usernameSearchString = params.get("username");
-        if (usernameSearchString == null)
-            return Collections.EMPTY_LIST;
-        return searchForUser(usernameSearchString, realm, firstResult, maxResults);
+        params.forEach((key, value) -> logger.info("key :" + key + " " + "value : " + value));
+        logger.info("searchForUser: with pagination");
+
+        List<UserModel> userModels = new ArrayList<UserModel>();
+        List<UserEntity> users = userDaoImpl.searchForUser(params, firstResult, maxResults);
+        users.forEach((user) -> {
+            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
+                    groupDaoImpl));
+        });
+        return userModels;
     }
 
     @Override
     public List<UserModel> getGroupMembers(RealmModel realm, GroupModel group, int firstResult,
             int maxResults) {
-        log.debugv("getGroupMembers: group {0}, firstResult {1}, maxResults {2}", group.getId(),
-                firstResult, maxResults);
+        logger.info("getGroupMembers: group {0}, firstResult {1}, maxResults {2}" + group.getId()
+                + firstResult + maxResults);
+
         // runtime automatically handles querying UserFederatedStorage
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users =
@@ -230,7 +238,7 @@ public class PostgresUserStorageProvider
     @Override
     public List<UserModel> getGroupMembers(RealmModel realm, GroupModel group) {
         // runtime automatically handles querying UserFederatedStorage
-        log.debugv("getGroupMembers: group {0}", group.getId());
+        logger.info("getGroupMembers: group {0}" + group.getId());
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = groupDaoImpl.getGroupMembers(group.getId());
         users.forEach((user) -> {
@@ -252,7 +260,7 @@ public class PostgresUserStorageProvider
 
     @Override
     public UserModel addUser(RealmModel realm, String username) {
-        log.debugv("addUser: username {0}", username);
+        logger.info("addUser: username {0}" + username);
         UserEntity user = new UserEntity();
         user.setUsername(username);
         userDaoImpl.insertUser(user);
@@ -261,67 +269,73 @@ public class PostgresUserStorageProvider
 
     @Override
     public boolean removeUser(RealmModel realm, UserModel user) {
-        log.debugv("removeUser: username {0}", user.getId());
+        logger.info("removeUser: username {0}" + user.getId());
         UserEntity userEntity = new UserEntity();
         String externalId = StorageId.externalId(user.getId());
         userEntity.setId(externalId);
         return userDaoImpl.deleteUser(userEntity);
     }
 
-
-
     // CredentialInputValidator methods
 
     public Set<String> getSupportedCredentialTypes() {
-        log.debug("getSupportedCredentialTypes");
+        logger.info("getSupportedCredentialTypes");
         return new HashSet<String>(this.supportedCredentialTypes);
     }
 
     @Override
     public boolean isConfiguredFor(RealmModel realm, UserModel user, String credentialType) {
-        log.debugv("isConfiguredFor: userId={0}, credentialType={1}", user.getId(), credentialType);
+        logger.info(
+                "isConfiguredFor: userId={0}, credentialType={1}" + user.getId() + credentialType);
+        UserEntity userEntity = new UserEntity();
+        String externalId = StorageId.externalId(user.getId());
         boolean isPasswordAuthDisabledForUser =
-                credentialDaoImpl.isConfiguredFor(user.getUsername(), credentialType);
+                credentialDaoImpl.isConfiguredFor(externalId, credentialType);
         return getSupportedCredentialTypes().contains(credentialType)
                 && isPasswordAuthDisabledForUser;
     }
 
     @Override
     public boolean supportsCredentialType(String credentialType) {
-        log.debugv("supportsCredentialType: credentialtype {0}", credentialType);
+        logger.info("supportsCredentialType: credentialtype {0}" + credentialType);
         return getSupportedCredentialTypes().contains(credentialType);
     }
 
     @Override
     public boolean isValid(RealmModel realm, UserModel user, CredentialInput input) {
-        log.debugv("isValid: userId={0}, credentialType={1}", user.getId(), input.getType());
+        logger.info("isValid: userId={0}, credentialType={1}" + user.getId() + input.getType());
+        UserEntity userEntity = new UserEntity();
+        String externalId = StorageId.externalId(user.getId());
         if (!supportsCredentialType(input.getType()) || !(input instanceof UserCredentialModel))
             return false;
         UserCredentialModel cred = (UserCredentialModel) input;
-        return credentialDaoImpl.validateCredentials(user.getUsername(),
-                cred.getChallengeResponse());
+        return credentialDaoImpl.validateCredentials(externalId, cred.getChallengeResponse());
     }
 
     // CredentialInputUpdater methods
 
     @Override
     public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
-        log.debugv("updateCredential: userId={0}, credentialType={1}", user.getId(),
-                input.getType());
+        logger.info("updateCredential: userId={0}, credentialType={1}" + user.getId()
+                + input.getType());
+        UserEntity userEntity = new UserEntity();
+        String externalId = StorageId.externalId(user.getId());
         if (!supportsCredentialType(input.getType()) || !(input instanceof UserCredentialModel))
             return false;
         UserCredentialModel cred = (UserCredentialModel) input;
-        return credentialDaoImpl.updateCredentials(user.getUsername(), cred.getChallengeResponse());
+        return credentialDaoImpl.updateCredentials(externalId, cred.getChallengeResponse());
     }
 
     // TODO: handle exception
     @Override
     public void disableCredentialType(RealmModel realm, UserModel user, String credentialType) {
-        log.debugv("disableCredentialType: userId={0}, credentialType={1}", user.getId(),
-                credentialType);
+        logger.info("disableCredentialType: userId={0}, credentialType={1}" + user.getId()
+                + credentialType);
+        UserEntity userEntity = new UserEntity();
+        String externalId = StorageId.externalId(user.getId());
         if (!supportsCredentialType(credentialType))
             return;
-        if (credentialDaoImpl.disableCredentialType(user.getUsername(), credentialType)) {
+        if (credentialDaoImpl.disableCredentialType(externalId, credentialType)) {
             return;
         }
     }
@@ -334,13 +348,13 @@ public class PostgresUserStorageProvider
 
     @Override
     public Set<String> getDisableableCredentialTypes(RealmModel realm, UserModel user) {
-        log.debug("getDisableableCredentialTypes");
+        logger.info("getDisableableCredentialTypes");
         return disableableTypes;
     }
 
     @Override
     public void close() {
-        log.debugv("closing");
+        logger.info("closing");
     }
 
 }
