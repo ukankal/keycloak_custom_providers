@@ -1,4 +1,4 @@
-CREATE TABLE roles (id UUID DEFAULT gen_random_uuid(), name CHARACTER VARYING(255), description CHARACTER VARYING(255), client_role BOOLEAN DEFAULT false NOT NULL,  client_id uuid NOT NULL, CONSTRAINT pk_roles PRIMARY KEY (id), CONSTRAINT fk_roles_clients FOREIGN KEY (client_id) REFERENCES "clients" ("id") ON DELETE CASCADE ON UPDATE CASCADE, CONSTRAINT UK_roles_name_client_id UNIQUE (name, client_id));
+CREATE TABLE roles (id UUID DEFAULT gen_random_uuid(), name CHARACTER VARYING(255), description CHARACTER VARYING(255), default_role BOOLEAN DEFAULT false NOT NULL, client_role BOOLEAN DEFAULT false NOT NULL,  client_id uuid NOT NULL, CONSTRAINT pk_roles PRIMARY KEY (id), CONSTRAINT fk_roles_clients FOREIGN KEY (client_id) REFERENCES "clients" ("id") ON DELETE CASCADE ON UPDATE CASCADE, CONSTRAINT UK_roles_name_client_id UNIQUE (name, client_id));
 
 CREATE TABLE clients (id UUID DEFAULT gen_random_uuid(), client_name CHARACTER VARYING(255), enabled BOOLEAN DEFAULT false NOT NULL, CONSTRAINT pk_clients PRIMARY KEY (id));
 
