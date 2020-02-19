@@ -1,49 +1,38 @@
 package org.ironiq.postgres;
 
-import lombok.extern.jbosslog.JBossLog;
-import org.keycloak.common.util.EnvUtil;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialInputUpdater;
 import org.keycloak.credential.CredentialInputValidator;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.RoleModel;
-import org.keycloak.models.GroupModel;
-import org.keycloak.models.ClientModel;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
-import org.keycloak.storage.adapter.AbstractUserAdapterFederatedStorage;
 import org.keycloak.storage.user.UserLookupProvider;
 import org.keycloak.storage.user.UserQueryProvider;
 import org.keycloak.storage.user.UserRegistrationProvider;
-import org.keycloak.storage.federated.UserFederatedStorageProvider;
 
 import org.ironiq.postgres.daoImpl.*;
 import org.ironiq.postgres.adapter.*;
 import org.ironiq.postgres.models.*;
 
-import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.logging.*;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-
-@JBossLog
 public class PostgresUserStorageProvider
         implements UserStorageProvider, UserLookupProvider, CredentialInputValidator,
         CredentialInputUpdater, UserRegistrationProvider, UserQueryProvider {
@@ -55,26 +44,23 @@ public class PostgresUserStorageProvider
     // map of loaded users in this transaction
     protected Map<String, UserModel> loadedUsers = new HashMap<>();
     protected final Set<String> supportedCredentialTypes = new HashSet<>();
-    private HikariDataSource ds;
 
     private UserDaoImpl userDaoImpl;
-    private RoleDaoImpl roleDaoImpl;
     private GroupDaoImpl groupDaoImpl;
     private CredentialDaoImpl credentialDaoImpl;
 
     private final Logger logger = Logger.getLogger(this.getClass().getPackage().getName());
 
-    public PostgresUserStorageProvider(KeycloakSession session, ComponentModel model,
-            HikariDataSource ds) throws Exception {
+    public PostgresUserStorageProvider(KeycloakSession session, ComponentModel model)
+            throws Exception {
+        logger.info("PostgresUserStorageProvider constructor");
         this.session = session;
         this.model = model;
         supportedCredentialTypes.add(PasswordCredentialModel.TYPE);
-        this.ds = ds;
-        this.userDaoImpl = new UserDaoImpl(this.ds);
-        this.groupDaoImpl = new GroupDaoImpl(this.ds);
-        this.roleDaoImpl = new RoleDaoImpl(this.ds);
-        this.credentialDaoImpl = new CredentialDaoImpl(this.ds);
-        logger.info("PostgresUserStorageProvider constructor");
+        // supportedCredentialTypes.add(OTPCredentialModel.TYPE);
+        this.userDaoImpl = new UserDaoImpl();
+        this.groupDaoImpl = new GroupDaoImpl();
+        this.credentialDaoImpl = new CredentialDaoImpl();
     }
 
     // UserStorageProvider methods
@@ -101,8 +87,7 @@ public class PostgresUserStorageProvider
         logger.info("getUserByUsername: username: {0}" + username);
         UserEntity user = userDaoImpl.getUserByUsername(username);
         if (user != null) {
-            return new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl);
+            return new UserAdapter(session, realm, model, user);
         }
         return null;
     }
@@ -113,8 +98,7 @@ public class PostgresUserStorageProvider
         String externalId = StorageId.externalId(id);
         UserEntity user = userDaoImpl.getUserById(externalId);
         if (user != null) {
-            return new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl);
+            return new UserAdapter(session, realm, model, user);
         }
         return null;
     }
@@ -124,8 +108,7 @@ public class PostgresUserStorageProvider
         logger.info("getUserByEmail: username: {0}" + email);
         UserEntity user = userDaoImpl.getUserByEmail(email);
         if (user != null) {
-            return new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl);
+            return new UserAdapter(session, realm, model, user);
         }
         return null;
     }
@@ -143,10 +126,11 @@ public class PostgresUserStorageProvider
         logger.info("getUsers");
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = userDaoImpl.getAllUsers();
-        users.forEach((user) -> {
-            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl));
-        });
+        if (users != null) {
+            users.forEach((user) -> {
+                userModels.add(new UserAdapter(session, realm, model, user));
+            });
+        }
         return userModels;
     }
 
@@ -155,10 +139,11 @@ public class PostgresUserStorageProvider
         logger.info("getUsers: firstResult {0}, maxResults {1}" + firstResult + maxResults);
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = userDaoImpl.getAllUsers(firstResult, maxResults);
-        users.forEach((user) -> {
-            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl));
-        });
+        if (users != null) {
+            users.forEach((user) -> {
+                userModels.add(new UserAdapter(session, realm, model, user));
+            });
+        }
         return userModels;
     }
 
@@ -169,10 +154,11 @@ public class PostgresUserStorageProvider
         logger.info("searchForUser : " + searchTerm);
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = userDaoImpl.searchForUser(searchTerm);
-        users.forEach((user) -> {
-            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl));
-        });
+        if (users != null) {
+            users.forEach((user) -> {
+                userModels.add(new UserAdapter(session, realm, model, user));
+            });
+        }
         return userModels;
     }
 
@@ -183,10 +169,11 @@ public class PostgresUserStorageProvider
                 + maxResults);
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = userDaoImpl.searchForUser(searchTerm, firstResult, maxResults);
-        users.forEach((user) -> {
-            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl));
-        });
+        if (users != null) {
+            users.forEach((user) -> {
+                userModels.add(new UserAdapter(session, realm, model, user));
+            });
+        }
         return userModels;
     }
 
@@ -196,10 +183,11 @@ public class PostgresUserStorageProvider
         logger.info("searchForUser: without pagination");
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = userDaoImpl.searchForUser(params);
-        users.forEach((user) -> {
-            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl));
-        });
+        if (users != null) {
+            users.forEach((user) -> {
+                userModels.add(new UserAdapter(session, realm, model, user));
+            });
+        }
         return userModels;
     }
 
@@ -211,10 +199,11 @@ public class PostgresUserStorageProvider
 
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = userDaoImpl.searchForUser(params, firstResult, maxResults);
-        users.forEach((user) -> {
-            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl));
-        });
+        if (users != null) {
+            users.forEach((user) -> {
+                userModels.add(new UserAdapter(session, realm, model, user));
+            });
+        }
         return userModels;
     }
 
@@ -228,10 +217,11 @@ public class PostgresUserStorageProvider
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users =
                 groupDaoImpl.getGroupMembers(group.getId(), maxResults, firstResult);
-        users.forEach((user) -> {
-            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl));
-        });
+        if (users != null) {
+            users.forEach((user) -> {
+                userModels.add(new UserAdapter(session, realm, model, user));
+            });
+        }
         return userModels;
     }
 
@@ -241,10 +231,11 @@ public class PostgresUserStorageProvider
         logger.info("getGroupMembers: group {0}" + group.getId());
         List<UserModel> userModels = new ArrayList<UserModel>();
         List<UserEntity> users = groupDaoImpl.getGroupMembers(group.getId());
-        users.forEach((user) -> {
-            userModels.add(new UserAdapter(session, realm, model, user, userDaoImpl, roleDaoImpl,
-                    groupDaoImpl));
-        });
+        if (users != null) {
+            users.forEach((user) -> {
+                userModels.add(new UserAdapter(session, realm, model, user));
+            });
+        }
         return userModels;
     }
 
@@ -252,7 +243,7 @@ public class PostgresUserStorageProvider
     public List<UserModel> searchForUserByUserAttribute(String attrName, String attrValue,
             RealmModel realm) {
         // runtime automatically handles querying UserFederatedStorage
-        return Collections.EMPTY_LIST;
+        return Collections.emptyList();
     }
 
 
@@ -287,7 +278,6 @@ public class PostgresUserStorageProvider
     public boolean isConfiguredFor(RealmModel realm, UserModel user, String credentialType) {
         logger.info(
                 "isConfiguredFor: userId={0}, credentialType={1}" + user.getId() + credentialType);
-        UserEntity userEntity = new UserEntity();
         String externalId = StorageId.externalId(user.getId());
         boolean isPasswordAuthDisabledForUser =
                 credentialDaoImpl.isConfiguredFor(externalId, credentialType);
@@ -304,7 +294,6 @@ public class PostgresUserStorageProvider
     @Override
     public boolean isValid(RealmModel realm, UserModel user, CredentialInput input) {
         logger.info("isValid: userId={0}, credentialType={1}" + user.getId() + input.getType());
-        UserEntity userEntity = new UserEntity();
         String externalId = StorageId.externalId(user.getId());
         if (!supportsCredentialType(input.getType()) || !(input instanceof UserCredentialModel))
             return false;
@@ -318,7 +307,6 @@ public class PostgresUserStorageProvider
     public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
         logger.info("updateCredential: userId={0}, credentialType={1}" + user.getId()
                 + input.getType());
-        UserEntity userEntity = new UserEntity();
         String externalId = StorageId.externalId(user.getId());
         if (!supportsCredentialType(input.getType()) || !(input instanceof UserCredentialModel))
             return false;
@@ -331,7 +319,6 @@ public class PostgresUserStorageProvider
     public void disableCredentialType(RealmModel realm, UserModel user, String credentialType) {
         logger.info("disableCredentialType: userId={0}, credentialType={1}" + user.getId()
                 + credentialType);
-        UserEntity userEntity = new UserEntity();
         String externalId = StorageId.externalId(user.getId());
         if (!supportsCredentialType(credentialType))
             return;
