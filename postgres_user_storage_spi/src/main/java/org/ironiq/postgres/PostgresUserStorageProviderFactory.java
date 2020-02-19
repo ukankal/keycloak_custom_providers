@@ -1,22 +1,6 @@
-/*
- * Copyright 2016 Red Hat, Inc. and/or its affiliates and other contributors as indicated by
- * the @author tags.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
- */
 package org.ironiq.postgres;
 
-import lombok.extern.jbosslog.JBossLog;
 import org.apache.commons.lang3.StringUtils;
-import org.keycloak.common.util.EnvUtil;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.component.ComponentValidationException;
 import org.keycloak.models.KeycloakSession;
@@ -28,13 +12,7 @@ import org.keycloak.storage.UserStorageProviderFactory;
 import org.keycloak.Config;
 import org.keycloak.common.util.MultivaluedHashMap;
 
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.*;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -131,7 +109,7 @@ public class PostgresUserStorageProviderFactory
                 + config.getFirst(DATABASE_NAME) + config.getFirst(USERNAME)
                 + config.getFirst(PASSWORD));
         try {
-            return new PostgresUserStorageProvider(session, model, ds);
+            return new PostgresUserStorageProvider(session, model);
         } catch (Exception e) {
             e.printStackTrace();
             // TODO: handle exception
@@ -167,12 +145,12 @@ public class PostgresUserStorageProviderFactory
         return null;
     }
 
+    public static HikariDataSource getDataSource() {
+        return ds;
+    }
+
     private HikariDataSource createDataSourceFromConfig(String db_jdbcUrl, String database_name,
             String db_username, String db_password) throws Exception {
-        // logger.info(
-        // "createDataSourceFromConfig : db_jdbcUrl={0}, database_name={1},
-        // db_username={2},db_password={3}",
-        // db_jdbcUrl, database_name, db_username, db_password);
         logger.info("<<<<<<<<<<<< createDataSourceFromConfig" + db_jdbcUrl + database_name
                 + db_username + db_password);
         try {
