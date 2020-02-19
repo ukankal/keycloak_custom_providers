@@ -10,8 +10,6 @@ Type the below command to build a jar file including all the dependencies.
 To deploy this provider you must have <span>Keycloak</span> running in standalone or standalone-ha mode.
 
 
-
-
 Enable the Provider for a Realm
 -------------------------------
 Login to the <span>Keycloak</span> Admin Console and got to the User Federation tab.   You should now see your deployed providers in the add-provider list box.
