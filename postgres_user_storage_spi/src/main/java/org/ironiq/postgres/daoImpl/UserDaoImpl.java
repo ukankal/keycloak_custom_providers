@@ -181,11 +181,9 @@ public class UserDaoImpl implements UserDao {
       int rs = stmt.executeUpdate();
       if (rs == 1) {
         UserEntity user$ = getUserByUsername(user.getUsername());
-        stmt1 = conn
-            .prepareStatement("INSERT INTO credential (type, user_id, algorithm) values(?, ?, ?)");
+        stmt1 = conn.prepareStatement("INSERT INTO credential (type, user_id) values(?, ?)");
         stmt1.setString(1, "password");
         stmt1.setObject(2, UUID.fromString(user$.getId()));
-        stmt1.setString(3, "Blow Fish");
         int res = stmt1.executeUpdate();
         return true;
       }
