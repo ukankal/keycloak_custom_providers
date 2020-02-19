@@ -1,33 +1,28 @@
 package org.ironiq.postgres.daoImpl;
 
+import org.ironiq.postgres.PostgresUserStorageProviderFactory;
 import org.ironiq.postgres.models.UserEntity;
 import org.ironiq.postgres.daoInterfaces.UserDao;
 
 import org.keycloak.models.UserModel;
-
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Connection;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 import com.zaxxer.hikari.HikariDataSource;
 
 public class UserDaoImpl implements UserDao {
 
   private HikariDataSource ds;
 
-  public UserDaoImpl(HikariDataSource ds) {
-    this.ds = ds;
+  public UserDaoImpl() {
+    this.ds = PostgresUserStorageProviderFactory.getDataSource();
   }
 
   public UserEntity getUserById(String id) {

@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Group {
+public class Group$ {
   private String id;
   private String name;
   private String parentGroup;

@@ -1,31 +1,27 @@
 package org.ironiq.postgres.daoImpl;
 
+import org.ironiq.postgres.PostgresUserStorageProviderFactory;
 import org.ironiq.postgres.models.UserEntity;
 import org.ironiq.postgres.models.Role;
 import org.ironiq.postgres.daoInterfaces.RoleDao;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Connection;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.HashSet;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 import com.zaxxer.hikari.HikariDataSource;
 
 public class RoleDaoImpl implements RoleDao {
 
   private final HikariDataSource ds;
 
-  public RoleDaoImpl(HikariDataSource ds) {
-    this.ds = ds;
+  public RoleDaoImpl() {
+    this.ds = PostgresUserStorageProviderFactory.getDataSource();
   }
 
   public boolean updateRole(Role role) {
@@ -110,15 +106,17 @@ public class RoleDaoImpl implements RoleDao {
     return null;
   }
 
-  public Set<Role> getClientRoleMappings(String clientId) {
+  public Set<Role> getRealmRoleMappingsForUser(String userId) {
     Connection conn = null;
     PreparedStatement stmt = null;
     Set<Role> roles = new HashSet<Role>();
     ResultSet rs = null;
     try {
       conn = ds.getConnection();
-      stmt = conn.prepareStatement("select * from roles where client_id=?");
-      stmt.setObject(1, UUID.fromString(clientId));
+      stmt = conn.prepareStatement(
+          "select * from roles where client_role=? AND id in (select role_id from user_role_mapping where user_id = ?) ");
+      stmt.setBoolean(1, false);
+      stmt.setObject(2, UUID.fromString(userId));
       rs = stmt.executeQuery();
       while (rs.next()) {
         roles.add(extractRoleFromResultSet(rs));
@@ -147,7 +145,7 @@ public class RoleDaoImpl implements RoleDao {
     return null;
   }
 
-  public Set<Role> getRoleMappings(String userId) {
+  public Set<Role> getClientRoleMappingsForUser(String userId, String clientId) {
     Connection conn = null;
     PreparedStatement stmt = null;
     Set<Role> roles = new HashSet<Role>();
@@ -155,9 +153,163 @@ public class RoleDaoImpl implements RoleDao {
     try {
       conn = ds.getConnection();
       stmt = conn.prepareStatement(
-          "select * from roles where id in (select role_id from user_role_mapping where user_id = ? UNION select role_id from group_role_mapping where group_id in (select group_id from user_group_membership where user_id = ?))");
-      stmt.setObject(1, UUID.fromString(userId));
+          "select * from roles where client_id = ? AND id in ( select role_id from user_role_mapping where user_id = ? )");
+      stmt.setObject(1, UUID.fromString(clientId));
       stmt.setObject(2, UUID.fromString(userId));
+      rs = stmt.executeQuery();
+      while (rs.next()) {
+        roles.add(extractRoleFromResultSet(rs));
+      }
+      return roles;
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (stmt != null) {
+        try {
+          stmt.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+      if (conn != null) {
+        try {
+          conn.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+    }
+    return null;
+  }
+
+  public Set<Role> getRoleMappingsForUser(String userId) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    Set<Role> roles = new HashSet<Role>();
+    ResultSet rs = null;
+    try {
+      conn = ds.getConnection();
+      stmt = conn.prepareStatement(
+          "select * from roles where id in (select role_id from user_role_mapping where user_id = ?)");
+      stmt.setObject(1, UUID.fromString(userId));
+      rs = stmt.executeQuery();
+      while (rs.next()) {
+        roles.add(extractRoleFromResultSet(rs));
+      }
+      return roles;
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (stmt != null) {
+        try {
+          stmt.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+      if (conn != null) {
+        try {
+          conn.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+    }
+    return null;
+  }
+
+  public Set<Role> getRealmRoleMappingsForGroup(String groupId) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    Set<Role> roles = new HashSet<Role>();
+    ResultSet rs = null;
+    try {
+      conn = ds.getConnection();
+      stmt = conn.prepareStatement(
+          "select * from roles where client_role=? AND id in (select role_id from group_role_mapping where group_id = ?)");
+      stmt.setBoolean(1, false);
+      stmt.setObject(2, UUID.fromString(groupId));
+      rs = stmt.executeQuery();
+      while (rs.next()) {
+        roles.add(extractRoleFromResultSet(rs));
+      }
+      return roles;
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (stmt != null) {
+        try {
+          stmt.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+      if (conn != null) {
+        try {
+          conn.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+    }
+    return null;
+  }
+
+  public Set<Role> getClientRoleMappingsForGroup(String groupId, String clientId) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    Set<Role> roles = new HashSet<Role>();
+    ResultSet rs = null;
+    try {
+      conn = ds.getConnection();
+      stmt = conn.prepareStatement(
+          "select * from roles where client_id = ? AND id in ( select role_id from group_role_mapping where group_id = ? )");
+      stmt.setObject(1, UUID.fromString(clientId));
+      stmt.setObject(2, UUID.fromString(groupId));
+      rs = stmt.executeQuery();
+      while (rs.next()) {
+        roles.add(extractRoleFromResultSet(rs));
+      }
+      return roles;
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (stmt != null) {
+        try {
+          stmt.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+      if (conn != null) {
+        try {
+          conn.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+    }
+    return null;
+  }
+
+  public Set<Role> getRoleMappingsForGroup(String groupId) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    Set<Role> roles = new HashSet<Role>();
+    ResultSet rs = null;
+    try {
+      conn = ds.getConnection();
+      stmt = conn.prepareStatement(
+          "select * from roles where id in (select role_id from group_role_mapping where group_id = ?)");
+      stmt.setObject(1, UUID.fromString(groupId));
       rs = stmt.executeQuery();
       while (rs.next()) {
         roles.add(extractRoleFromResultSet(rs));
@@ -296,6 +448,79 @@ public class RoleDaoImpl implements RoleDao {
     return false;
   }
 
+  public boolean isClientRole(String roleId) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    ResultSet rs = null;
+    try {
+      conn = ds.getConnection();
+      stmt = conn.prepareStatement("select client_role from roles WHERE id = ?");
+      stmt.setObject(1, UUID.fromString(roleId));
+      rs = stmt.executeQuery();
+      if (rs.next()) {
+        return rs.getBoolean("client_role");
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (stmt != null) {
+        try {
+          stmt.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+      if (conn != null) {
+        try {
+          conn.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+    }
+    return false;
+  }
+
+  public String getClientName(String roleId) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    ResultSet rs = null;
+    try {
+      conn = ds.getConnection();
+      stmt = conn.prepareStatement(
+          "select * from clients WHERE id in (select client_id from roles where id = ?)");
+      stmt.setObject(1, UUID.fromString(roleId));
+      rs = stmt.executeQuery();
+      if (rs.next()) {
+        return rs.getString("client_name");
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (stmt != null) {
+        try {
+          stmt.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+      if (conn != null) {
+        try {
+          conn.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+    }
+    return null;
+  }
+
+
+
   private UserEntity extractUserFromResultSet(ResultSet rs) throws SQLException {
     UserEntity user = new UserEntity();
     user.setId(rs.getObject("id", java.util.UUID.class).toString());
@@ -319,5 +544,4 @@ public class RoleDaoImpl implements RoleDao {
     role.setDefaultRole(rs.getBoolean("default_role"));
     return role;
   }
-
 }
