@@ -1,19 +1,12 @@
 package org.ironiq.postgres.daoImpl;
 
-import org.ironiq.postgres.models.UserEntity;
+import org.ironiq.postgres.PostgresUserStorageProviderFactory;
 import org.ironiq.postgres.daoInterfaces.CredentialDao;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Connection;
-import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.stream.Collectors;
 import java.util.UUID;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -21,8 +14,8 @@ public class CredentialDaoImpl implements CredentialDao {
 
   private HikariDataSource ds;
 
-  public CredentialDaoImpl(HikariDataSource ds) {
-    this.ds = ds;
+  public CredentialDaoImpl() {
+    this.ds = PostgresUserStorageProviderFactory.getDataSource();
   }
 
   public boolean validateCredentials(String userId, String password) {

@@ -1,34 +1,30 @@
 package org.ironiq.postgres.daoImpl;
 
+import org.ironiq.postgres.PostgresUserStorageProviderFactory;
 import org.ironiq.postgres.models.UserEntity;
-import org.ironiq.postgres.models.Group;
+import org.ironiq.postgres.models.Group$;
 import org.ironiq.postgres.daoInterfaces.GroupDao;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Connection;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.HashSet;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 import com.zaxxer.hikari.HikariDataSource;
 
 public class GroupDaoImpl implements GroupDao {
 
   private final HikariDataSource ds;
 
-  public GroupDaoImpl(HikariDataSource ds) {
-    this.ds = ds;
+  public GroupDaoImpl() {
+    this.ds = PostgresUserStorageProviderFactory.getDataSource();
   }
 
-  public boolean updateGroup(Group group) {
+  public boolean updateGroup(Group$ group) {
     Connection conn = null;
     PreparedStatement stmt = null;
     try {
@@ -76,10 +72,10 @@ public class GroupDaoImpl implements GroupDao {
     return getGroupMembers(groupId, null, null);
   }
 
-  public Set<Group> getGroups(String userId) {
+  public Set<Group$> getGroups(String userId) {
     Connection conn = null;
     PreparedStatement stmt = null;
-    Set<Group> groups = new HashSet<Group>();
+    Set<Group$> groups = new HashSet<Group$>();
     ResultSet rs = null;
     try {
       conn = ds.getConnection();
@@ -224,6 +220,79 @@ public class GroupDaoImpl implements GroupDao {
     return false;
   }
 
+  public Group$ getParent(String groupId) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    ResultSet rs = null;
+    try {
+      conn = ds.getConnection();
+      stmt = conn.prepareStatement(
+          "select * from groups where id in (select parent_group from groups where id = ?)");
+      stmt.setObject(1, UUID.fromString(groupId));
+      rs = stmt.executeQuery();
+      while (rs.next()) {
+        return extractGroupFromResultSet(rs);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (stmt != null) {
+        try {
+          stmt.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+      if (conn != null) {
+        try {
+          conn.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+    }
+    return null;
+  }
+
+  public Set<Group$> getSubGroups(String groupId) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    Set<Group$> groups = new HashSet<Group$>();
+    ResultSet rs = null;
+    try {
+      conn = ds.getConnection();
+      stmt = conn.prepareStatement("select * from groups where parent_group = ?");
+      stmt.setObject(1, UUID.fromString(groupId));
+      rs = stmt.executeQuery();
+      while (rs.next()) {
+        groups.add(extractGroupFromResultSet(rs));
+      }
+      return groups;
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (stmt != null) {
+        try {
+          stmt.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+      if (conn != null) {
+        try {
+          conn.close();
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+    }
+    return groups;
+  }
+
   private List<UserEntity> getGroupMembers(String groupId, Integer limit, Integer offset) {
     Connection conn = null;
     PreparedStatement stmt = null;
@@ -264,8 +333,8 @@ public class GroupDaoImpl implements GroupDao {
     return null;
   }
 
-  private Group extractGroupFromResultSet(ResultSet rs) throws SQLException {
-    Group group = new Group();
+  private Group$ extractGroupFromResultSet(ResultSet rs) throws SQLException {
+    Group$ group = new Group$();
     group.setId(rs.getObject("id", java.util.UUID.class).toString());
     group.setName(rs.getString("name"));
     group.setParentGroup(rs.getString("parent_group"));
