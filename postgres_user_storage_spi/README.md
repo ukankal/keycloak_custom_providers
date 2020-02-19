@@ -1,12 +1,20 @@
 Build and Deploy the SPI
 -------------------------------
 
+Type the below command to build a jar file including all the dependencies.
+
+   ````
+  mvn clean compile assembly:single
+   ````
+
 To deploy this provider you must have <span>Keycloak</span> running in standalone or standalone-ha mode. Then type the follow maven command:
 
    ````
-   mvn clean install wildfly:deploy
+  mvn clean install wildfly:deploy
    ````
+
 If you want to play with and modify the example, simply rerun the maven deploy command above and the new version will be hot deployed.
+
 
 Enable the Provider for a Realm
 -------------------------------
