@@ -14,6 +14,8 @@ import org.keycloak.storage.StorageId;
 import org.keycloak.storage.adapter.AbstractUserAdapterFederatedStorage;
 
 import java.util.Set;
+import java.util.List;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.logging.*;
 
@@ -30,21 +32,18 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
   private final Logger logger = Logger.getLogger(this.getClass().getPackage().getName());
 
-
+  // TODO: make Dao implementation static
   public UserAdapter(KeycloakSession session, RealmModel realm, ComponentModel model,
-      UserEntity user, UserDaoImpl userDaoImpl, RoleDaoImpl roleDaoImpl,
-      GroupDaoImpl groupDaoImpl) {
+      UserEntity user) {
     super(session, realm, model);
-    logger.info("externalId:" + user.getId());
-    logger.info("storageId" + StorageId.keycloakId(model, user.getId()));
     this.user = user;
     this.session = session;
     this.realm = realm;
     this.model = model;
     this.keycloakId = StorageId.keycloakId(model, user.getId());
-    this.userDaoImpl = userDaoImpl;
-    this.roleDaoImpl = roleDaoImpl;
-    this.groupDaoImpl = groupDaoImpl;
+    this.userDaoImpl = new UserDaoImpl();
+    this.roleDaoImpl = new RoleDaoImpl();
+    this.groupDaoImpl = new GroupDaoImpl();
   }
 
   @Override
@@ -76,28 +75,34 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
   @Override
   public Set<RoleModel> getClientRoleMappings(ClientModel app) {
     Set<RoleModel> clientRoles = new HashSet<RoleModel>();
-    Set<Role> roles = roleDaoImpl.getClientRoleMappings(app.getClientId());
-    roles.forEach((role) -> {
-      clientRoles.add(new RoleAdapter(session, realm, model, role, roleDaoImpl));
-    });
+    Set<Role> roles = roleDaoImpl.getClientRoleMappingsForUser(user.getId(), app.getClientId());
+    if (roles != null) {
+      roles.forEach((role) -> {
+        clientRoles.add(new RoleAdapter(session, realm, model, role));
+      });
+    }
     return clientRoles;
   }
 
   public Set<GroupModel> getGroups() {
     Set<GroupModel> groupModels = new HashSet<GroupModel>();
-    Set<Group> groups = groupDaoImpl.getGroups(user.getId());
-    groups.forEach((group) -> {
-      groupModels.add(new GroupAdapter(session, realm, model, group, groupDaoImpl));
-    });
+    Set<Group$> groups = groupDaoImpl.getGroups(user.getId());
+    if (groups != null) {
+      groups.forEach((group) -> {
+        groupModels.add(new GroupAdapter(session, realm, model, group));
+      });
+    }
     return groupModels;
   }
 
   protected Set<GroupModel> getGroupsInternal() {
     Set<GroupModel> groupModels = new HashSet<GroupModel>();
-    Set<Group> groups = groupDaoImpl.getGroups(user.getId());
-    groups.forEach((group) -> {
-      groupModels.add(new GroupAdapter(session, realm, model, group, groupDaoImpl));
-    });
+    Set<Group$> groups = groupDaoImpl.getGroups(user.getId());
+    if (groups != null) {
+      groups.forEach((group) -> {
+        groupModels.add(new GroupAdapter(session, realm, model, group));
+      });
+    }
     return groupModels;
   }
 
@@ -190,10 +195,12 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
   @Override
   public Set<RoleModel> getRealmRoleMappings() {
     Set<RoleModel> realmRoles = new HashSet<RoleModel>();
-    Set<Role> roles = roleDaoImpl.getRoleMappings(user.getId());
-    roles.forEach((role) -> {
-      realmRoles.add(new RoleAdapter(session, realm, model, role, roleDaoImpl));
-    });
+    Set<Role> roles = roleDaoImpl.getRealmRoleMappingsForUser(user.getId());
+    if (roles != null) {
+      roles.forEach((role) -> {
+        realmRoles.add(new RoleAdapter(session, realm, model, role));
+      });
+    }
     return realmRoles;
   }
 
@@ -205,20 +212,24 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
   @Override
   public Set<RoleModel> getRoleMappings() {
     Set<RoleModel> realmRoles = new HashSet<RoleModel>();
-    Set<Role> roles = roleDaoImpl.getRoleMappings(user.getId());
-    roles.forEach((role) -> {
-      realmRoles.add(new RoleAdapter(session, realm, model, role, roleDaoImpl));
-    });
+    Set<Role> roles = roleDaoImpl.getRoleMappingsForUser(user.getId());
+    if (roles != null) {
+      roles.forEach((role) -> {
+        realmRoles.add(new RoleAdapter(session, realm, model, role));
+      });
+    }
     return realmRoles;
   }
 
   @Override
   protected Set<RoleModel> getRoleMappingsInternal() {
     Set<RoleModel> realmRoles = new HashSet<RoleModel>();
-    Set<Role> roles = roleDaoImpl.getRoleMappings(user.getId());
-    roles.forEach((role) -> {
-      realmRoles.add(new RoleAdapter(session, realm, model, role, roleDaoImpl));
-    });
+    Set<Role> roles = roleDaoImpl.getRoleMappingsForUser(user.getId());
+    if (roles != null) {
+      roles.forEach((role) -> {
+        realmRoles.add(new RoleAdapter(session, realm, model, role));
+      });
+    }
     return realmRoles;
   }
 
@@ -246,6 +257,24 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
   // public void leaveGroup(GroupModel group) {
   // }
+
+
+  // @Override
+  // public List<String> getAttribute(String name) {
+  // final List<String> values;
+  // if (attributes.containsKey(name)) {
+  // values = attributes.get(name);
+  // } else {
+  // values = super.getAttribute(name);
+  // }
+
+  // return Optional.ofNullable(values).orElse(Collections.emptyList());
+  // }
+
+  @Override
+  public List<String> getAttribute(String name) {
+    return Collections.emptyList();
+  }
 
 
   public void removeRequiredAction(String action) {
