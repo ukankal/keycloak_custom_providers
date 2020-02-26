@@ -559,7 +559,7 @@ public class UserDaoImpl implements UserDao {
       conn = ds.getConnection();
       if (firstResult != null && maxResults != null) {
         stmt = conn.prepareStatement(
-            "select * from user_entity where (username LIKE ? OR  firstname LIKE ? OR  lastname like ? OR  email like ?) limit ? offset ?");
+            "select * from user_entity where (username LIKE ? OR  first_name LIKE ? OR  lastname like ? OR  email like ?) limit ? offset ?");
         stmt.setString(1, "%" + searchTerm + "%");
         stmt.setString(2, "%" + searchTerm + "%");
         stmt.setString(3, "%" + searchTerm + "%");
