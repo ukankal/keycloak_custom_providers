@@ -114,9 +114,11 @@ public class RoleDaoImpl implements RoleDao {
     try {
       conn = ds.getConnection();
       stmt = conn.prepareStatement(
-          "select * from roles where client_role=? AND id in (select role_id from user_role_mapping where user_id = ?) ");
+          "select * from roles where client_role=? AND id in (select role_id from user_role_mapping where user_id = ? UNION select id from roles where client_role = ? AND default_role = ?)");
       stmt.setBoolean(1, false);
       stmt.setObject(2, UUID.fromString(userId));
+      stmt.setBoolean(3, false);
+      stmt.setBoolean(4, true);
       rs = stmt.executeQuery();
       while (rs.next()) {
         roles.add(extractRoleFromResultSet(rs));
@@ -153,9 +155,11 @@ public class RoleDaoImpl implements RoleDao {
     try {
       conn = ds.getConnection();
       stmt = conn.prepareStatement(
-          "select * from roles where client_id = ? AND id in ( select role_id from user_role_mapping where user_id = ? )");
+          "select * from roles where client_id = ? AND id in ( select role_id from user_role_mapping where user_id = ? UNION select id from roles where client_id = ? AND default_role = ?)");
       stmt.setObject(1, UUID.fromString(clientId));
       stmt.setObject(2, UUID.fromString(userId));
+      stmt.setObject(3, UUID.fromString(clientId));
+      stmt.setBoolean(4, true);
       rs = stmt.executeQuery();
       while (rs.next()) {
         roles.add(extractRoleFromResultSet(rs));
@@ -192,8 +196,9 @@ public class RoleDaoImpl implements RoleDao {
     try {
       conn = ds.getConnection();
       stmt = conn.prepareStatement(
-          "select * from roles where id in (select role_id from user_role_mapping where user_id = ?)");
+          "select * from roles where id in (select role_id from user_role_mapping where user_id = ? UNION  select id from roles where default_role = ?)");
       stmt.setObject(1, UUID.fromString(userId));
+      stmt.setBoolean(2, true);
       rs = stmt.executeQuery();
       while (rs.next()) {
         roles.add(extractRoleFromResultSet(rs));
