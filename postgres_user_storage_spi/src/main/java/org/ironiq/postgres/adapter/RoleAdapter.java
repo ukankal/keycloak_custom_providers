@@ -24,7 +24,7 @@ public class RoleAdapter implements RoleModel {
 
   public RoleAdapter(KeycloakSession session, RealmModel realm, ComponentModel model, Role role) {
     this.role = role;
-    this.roleDaoImpl = new RoleDaoImpl();
+    this.roleDaoImpl = new RoleDaoImpl(realm.getName());
     this.session = session;
     this.realm = realm;
     this.model = model;

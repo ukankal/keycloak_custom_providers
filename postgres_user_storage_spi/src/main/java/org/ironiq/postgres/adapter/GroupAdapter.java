@@ -35,8 +35,8 @@ public class GroupAdapter implements GroupModel {
     this.session = session;
     this.realm = realm;
     this.model = model;
-    this.groupDaoImpl = new GroupDaoImpl();
-    this.roleDaoImpl = new RoleDaoImpl();
+    this.groupDaoImpl = new GroupDaoImpl(realm.getName());
+    this.roleDaoImpl = new RoleDaoImpl(realm.getName());
   }
 
   class GroupRemovedEventImpl implements GroupModel.GroupRemovedEvent {
