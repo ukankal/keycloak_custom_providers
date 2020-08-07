@@ -21,8 +21,8 @@ public class UserDaoImpl implements UserDao {
 
   private HikariDataSource ds;
 
-  public UserDaoImpl() {
-    this.ds = PostgresUserStorageProviderFactory.getDataSource();
+  public UserDaoImpl(String realmName) {
+    this.ds = PostgresUserStorageProviderFactory.getDataSource().get(realmName);
   }
 
   public UserEntity getUserById(String id) {

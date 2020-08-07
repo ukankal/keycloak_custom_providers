@@ -14,8 +14,8 @@ public class CredentialDaoImpl implements CredentialDao {
 
   private HikariDataSource ds;
 
-  public CredentialDaoImpl() {
-    this.ds = PostgresUserStorageProviderFactory.getDataSource();
+  public CredentialDaoImpl(String realmName) {
+    this.ds = PostgresUserStorageProviderFactory.getDataSource().get(realmName);
   }
 
   public boolean validateCredentials(String userId, String password) {

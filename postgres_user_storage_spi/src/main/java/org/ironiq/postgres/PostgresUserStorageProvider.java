@@ -58,9 +58,10 @@ public class PostgresUserStorageProvider
         this.model = model;
         supportedCredentialTypes.add(PasswordCredentialModel.TYPE);
         // supportedCredentialTypes.add(OTPCredentialModel.TYPE);
-        this.userDaoImpl = new UserDaoImpl();
-        this.groupDaoImpl = new GroupDaoImpl();
-        this.credentialDaoImpl = new CredentialDaoImpl();
+        String realmName = session.getContext().getRealm().getName();
+        this.userDaoImpl = new UserDaoImpl(realmName);
+        this.groupDaoImpl = new GroupDaoImpl(realmName);
+        this.credentialDaoImpl = new CredentialDaoImpl(realmName);
     }
 
     // UserStorageProvider methods

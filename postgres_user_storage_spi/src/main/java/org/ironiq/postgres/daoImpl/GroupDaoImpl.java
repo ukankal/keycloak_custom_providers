@@ -20,8 +20,8 @@ public class GroupDaoImpl implements GroupDao {
 
   private final HikariDataSource ds;
 
-  public GroupDaoImpl() {
-    this.ds = PostgresUserStorageProviderFactory.getDataSource();
+  public GroupDaoImpl(String realmName) {
+    this.ds = PostgresUserStorageProviderFactory.getDataSource().get(realmName);
   }
 
   public boolean updateGroup(Group$ group) {

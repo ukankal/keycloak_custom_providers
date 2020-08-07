@@ -41,9 +41,9 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     this.realm = realm;
     this.model = model;
     this.keycloakId = StorageId.keycloakId(model, user.getId());
-    this.userDaoImpl = new UserDaoImpl();
-    this.roleDaoImpl = new RoleDaoImpl();
-    this.groupDaoImpl = new GroupDaoImpl();
+    this.userDaoImpl = new UserDaoImpl(realm.getName());
+    this.roleDaoImpl = new RoleDaoImpl(realm.getName());
+    this.groupDaoImpl = new GroupDaoImpl(realm.getName());
   }
 
   @Override

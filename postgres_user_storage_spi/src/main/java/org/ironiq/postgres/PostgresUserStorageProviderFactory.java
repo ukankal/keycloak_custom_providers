@@ -13,6 +13,7 @@ import org.keycloak.Config;
 import org.keycloak.common.util.MultivaluedHashMap;
 
 import java.util.List;
+import java.util.HashMap;
 import java.util.logging.*;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -29,7 +30,9 @@ public class PostgresUserStorageProviderFactory
     protected static final List<ProviderConfigProperty> configMetadata;
     private final Logger logger = Logger.getLogger(this.getClass().getPackage().getName());
 
-    private static HikariDataSource ds;
+    // private static HikariDataSource ds;
+    private static HashMap<String, HikariDataSource> realmDatasourceMap = new HashMap<String, HikariDataSource>();
+
     public static final String DB_URL = "db:url";
     public static final String DATABASE_NAME = "db:database";
     public static final String USERNAME = "db:username";
@@ -68,9 +71,10 @@ public class PostgresUserStorageProviderFactory
                 + PASSWORD);
         MultivaluedHashMap<String, String> configMap = model.getConfig();
         try {
-            ds = createDataSourceFromConfig(configMap.getFirst(DB_URL),
+            HikariDataSource ds = createDataSourceFromConfig(configMap.getFirst(DB_URL),
                     configMap.getFirst(DATABASE_NAME), configMap.getFirst(USERNAME),
                     configMap.getFirst(PASSWORD));
+            realmDatasourceMap.put(realm.getName(),ds);
         } catch (Exception e) {
             throw e;
         } finally {
@@ -125,7 +129,10 @@ public class PostgresUserStorageProviderFactory
     @Override
     public void close() {
         logger.info("<<<<<<<<<<<<<<<<<< Closing factory");
-        ds.close();
+        for (HashMap.Entry<String, HikariDataSource> entry : realmDatasourceMap.entrySet()) {
+            HikariDataSource value = entry.getValue();
+            value.close();
+        }
     }
 
     @Override
@@ -145,8 +152,8 @@ public class PostgresUserStorageProviderFactory
         return null;
     }
 
-    public static HikariDataSource getDataSource() {
-        return ds;
+    public static HashMap<String, HikariDataSource> getDataSource() {
+        return realmDatasourceMap;
     }
 
     private HikariDataSource createDataSourceFromConfig(String db_jdbcUrl, String database_name,
@@ -155,7 +162,7 @@ public class PostgresUserStorageProviderFactory
                 + db_username + db_password);
         try {
             HikariConfig jdbcConfig = new HikariConfig();
-            jdbcConfig.setPoolName("kctest");
+            jdbcConfig.setPoolName("keycloak_"+database_name+"_user_storage_spi");
             jdbcConfig.setJdbcUrl(db_jdbcUrl.concat(database_name));
             jdbcConfig.setUsername(db_username);
             jdbcConfig.setPassword(db_password);

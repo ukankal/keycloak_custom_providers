@@ -20,8 +20,8 @@ public class RoleDaoImpl implements RoleDao {
 
   private final HikariDataSource ds;
 
-  public RoleDaoImpl() {
-    this.ds = PostgresUserStorageProviderFactory.getDataSource();
+  public RoleDaoImpl(String realmName) {
+    this.ds = PostgresUserStorageProviderFactory.getDataSource().get(realmName);
   }
 
   public boolean updateRole(Role role) {
