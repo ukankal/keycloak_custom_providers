@@ -67,8 +67,7 @@ public class PostgresUserStorageProviderFactory
 
     @Override
     public void onCreate(KeycloakSession session, RealmModel realm, ComponentModel model) {
-        logger.info("<<<<<<<<<<<<<<< onCreate of factory" + DB_URL + DATABASE_NAME + USERNAME
-                + PASSWORD);
+        logger.info("<<<<<<<<<<<<<<< onCreate of factory" + DB_URL + DATABASE_NAME + USERNAME);
         MultivaluedHashMap<String, String> configMap = model.getConfig();
         try {
             HikariDataSource ds = createDataSourceFromConfig(configMap.getFirst(DB_URL),
@@ -109,9 +108,7 @@ public class PostgresUserStorageProviderFactory
     public PostgresUserStorageProvider create(KeycloakSession session, ComponentModel model) {
 
         MultivaluedHashMap<String, String> config = model.getConfig();
-        logger.info("create Instance: {0}, {1}, {2},{3}" + config.getFirst(DB_URL)
-                + config.getFirst(DATABASE_NAME) + config.getFirst(USERNAME)
-                + config.getFirst(PASSWORD));
+        logger.info("create user storage spi Instance");
         try {
             return new PostgresUserStorageProvider(session, model);
         } catch (Exception e) {
@@ -159,7 +156,7 @@ public class PostgresUserStorageProviderFactory
     private HikariDataSource createDataSourceFromConfig(String db_jdbcUrl, String database_name,
             String db_username, String db_password) throws Exception {
         logger.info("<<<<<<<<<<<< createDataSourceFromConfig" + db_jdbcUrl + database_name
-                + db_username + db_password);
+                + db_username );
         try {
             HikariConfig jdbcConfig = new HikariConfig();
             jdbcConfig.setPoolName("keycloak_"+database_name+"_user_storage_spi");
